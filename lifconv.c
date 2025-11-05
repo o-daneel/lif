@@ -25,6 +25,7 @@ Compile with:
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define LIF_DEBUG
 #define LIF_IMPLEMENTATION
 #include "lif.h"
 

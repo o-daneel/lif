@@ -299,6 +299,12 @@ Implementation */
 #ifndef LIF_ZEROARR
 	#define LIF_ZEROARR(a) memset((a),0,sizeof(a))
 #endif
+#if defined(LIF_DEBUG) && !defined(LIF_NO_STDIO)
+	#include <stdio.h>
+	#define LIF_DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+	#define LIF_DEBUG_PRINT(...)
+#endif
 
 #define LIF_OP_INDEX  0x00 /* 00xxxxxx */
 #define LIF_OP_DIFF   0x40 /* 01xxxxxx */
@@ -421,6 +427,8 @@ void *lif_encode(const void *data, const lif_desc *desc, int *out_len) {
 
 			if (index[index_pos].v == px.v) {
 				bytes[p++] = LIF_OP_INDEX | index_pos;
+				LIF_DEBUG_PRINT("OP_INDEX idx=%d v=0x%08X -> %02X, %02X, %02X, %02X\n", 
+					index_pos, px.v, px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a);
 			}
 			else {
 				index[index_pos] = px;
@@ -450,6 +458,7 @@ void *lif_encode(const void *data, const lif_desc *desc, int *out_len) {
 					}
 					else {
 						bytes[p++] = LIF_OP_RGB;
+
 						// green (b2 b1 b0) | blue (b4 b3 b2 b1 b0)
 						bytes[p]  = px.rgba.g << 5;
 						bytes[p] |= px.rgba.b & 0x1F;
@@ -458,10 +467,14 @@ void *lif_encode(const void *data, const lif_desc *desc, int *out_len) {
 						bytes[p]  = px.rgba.r << 3;
 						bytes[p] |= (px.rgba.g >> 3) & 0x7;
 						p++;
+
+						LIF_DEBUG_PRINT("OP_RGB565 -> %02X, %02X, %02X\n",
+							px.rgba.r, px.rgba.g, px.rgba.b);
 					}
 				}
 				else {
 					bytes[p++] = LIF_OP_RGBA;
+
 					// green (b2 b1 b0) | blue (b4 b3 b2 b1 b0)
 					bytes[p]  = px.rgba.g << 5;
 					bytes[p] |= px.rgba.b & 0x1F;
@@ -471,6 +484,9 @@ void *lif_encode(const void *data, const lif_desc *desc, int *out_len) {
 					bytes[p] |= (px.rgba.g >> 3) & 0x7;
 					p++;
 					bytes[p++] = px.rgba.a;
+
+					LIF_DEBUG_PRINT("OP_RGBA5658 -> %02X, %02X, %02X, %02X\n",
+						px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a);
 				}
 			}
 		}
@@ -502,6 +518,9 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 		return NULL;
 	}
 
+	/* debug: entry */
+	LIF_DEBUG_PRINT("lif_decode: entry size=%d requested_channels=%d\n", size, channels);
+
 	bytes = (const unsigned char *)data;
 
 	header_magic = lif_read_32(bytes, &p);
@@ -518,6 +537,10 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 		return NULL;
 	}
 
+	/* debug: header info */
+	LIF_DEBUG_PRINT("lif_decode: header magic=0x%08X width=%u height=%u file_channels=0x%02X\n",
+		header_magic, desc->width, desc->height, desc->channels);
+
 	if (channels == 0) {
 		channels = 4;
 	}
@@ -527,6 +550,9 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 	if (!pixels) {
 		return NULL;
 	}
+
+	/* debug: allocation */
+	LIF_DEBUG_PRINT("lif_decode: allocated %d bytes for pixels (channels=%d)\n", px_len, channels);
 
 	LIF_ZEROARR(index);
 	px.rgba.r = 0;
@@ -542,6 +568,9 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 		else if (p < chunks_len) {
 			int b1 = bytes[p++];
 
+			/* debug: opcode byte */
+			LIF_DEBUG_PRINT("lif_decode: p=%d px_pos=%d run=%d b1=0x%02X ", p-1, px_pos, run, b1);
+
 			if (b1 == LIF_OP_RGB) {
 				px.rgba.b = bytes[p] & 0x1F;
 				px.rgba.g = (bytes[p] >> 5) & 0x07;
@@ -549,6 +578,8 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 				px.rgba.r = (bytes[p] >> 3) & 0x1F;
 				px.rgba.g |= (bytes[p] << 3) & 0x3F;
 				p++;
+				LIF_DEBUG_PRINT("OP_RGB565 -> %02X, %02X, %02X\n",
+					px.rgba.r, px.rgba.g, px.rgba.b);
 			}
 			else if (b1 == LIF_OP_RGBA) {
 				px.rgba.b = bytes[p] & 0x1F;
@@ -558,10 +589,14 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 				px.rgba.g |= (bytes[p] << 3) & 0x3F;
 				p++;
 				px.rgba.a = bytes[p++];
+				LIF_DEBUG_PRINT("OP_RGBA5658 -> %02X, %02X, %02X, %02X\n",
+					px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a);
 			}
 			else if ((b1 & LIF_MASK_2) == LIF_OP_INDEX) {
 				int idx = b1 & 0x3f;
 				px = index[idx];
+				LIF_DEBUG_PRINT("OP_INDEX idx=%d v=0x%08X -> %02X, %02X, %02X, %02X\n",
+					idx, px.v, px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a);
 			}
 			else if ((b1 & LIF_MASK_2) == LIF_OP_DIFF) {
 				int db = ((b1 >> 4) & 0x03) - 2;
@@ -570,6 +605,8 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 				px.rgba.r = (px.rgba.r + dr) % 32;
 				px.rgba.g = (px.rgba.g + dg) % 64;
 				px.rgba.b = (px.rgba.b + db) % 32;
+				LIF_DEBUG_PRINT("OP_DIFF dr=%d dg=%d db=%d -> %02X, %02X, %02X\n",
+					dr, dg, db, px.rgba.r, px.rgba.g, px.rgba.b);
 			}
 			else if ((b1 & LIF_MASK_2) == LIF_OP_LUMA) {
 				int b2 = bytes[p++];
@@ -577,9 +614,12 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 				px.rgba.b = (px.rgba.b + vg - 8 + ((b2 >> 4) & 0x0f)) % 32;
 				px.rgba.g = (px.rgba.g + vg) % 64;
 				px.rgba.r = (px.rgba.r + vg - 8 +  (b2       & 0x0f)) % 32;
+				LIF_DEBUG_PRINT("OP_LUMA vg=%d b2=0x%02X -> %02X, %02X, %02X\n",
+					vg, b2, px.rgba.r, px.rgba.g, px.rgba.b);
 			}
 			else if ((b1 & LIF_MASK_2) == LIF_OP_RUN) {
 				run = (b1 & 0x3f);
+				LIF_DEBUG_PRINT("OP_RUN run=%02X -> x%d\n", run, run+1);
 			}
 
 			index[LIF_COLOR_HASH(px) & (64 - 1)] = px;
@@ -591,6 +631,8 @@ void *lif_decode(const void *data, int size, lif_desc *desc, int channels) {
 			pixels[px_pos + 3] = px.rgba.a;
 		}
 	}
+
+	LIF_DEBUG_PRINT("lif_decode: p=%d px_pos=%d\n", p, px_pos);
 
 	return pixels;
 }
