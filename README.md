@@ -1,16 +1,16 @@
-![QOI Logo](https://qoiformat.org/qoi-logo.svg)
-
-# QOI - The “Quite OK Image Format” for fast, lossless image compression
+# The "Lunii Image File Format", a fork of QOI
 
 Single-file MIT licensed library for C/C++
 
-See [qoi.h](https://github.com/phoboslab/qoi/blob/master/qoi.h) for
+See [lif.h](https://github.com/o-daneel/lif/blob/master/lif.h) for
 the documentation and format specification.
 
-More info at https://qoiformat.org
+More info from original format at https://qoiformat.org
 
+## Why LIF ?
+LIF offer an imporved version to fit better on embedded devices.
 
-## Why?
+## Why QOI ?
 
 QOI offers sweet-spot of compression ratio and throughput for lossless 
 image encoding. QOI's compression is roughly comparable to PNG (usually worse than 
@@ -23,12 +23,15 @@ The QOI format is also extremely simple, which helps a lot when porting to other
 
 ## Example Usage
 
-- [qoiconv.c](https://github.com/phoboslab/qoi/blob/master/qoiconv.c)
-converts between png <> qoi
- - [qoibench.c](https://github.com/phoboslab/qoi/blob/master/qoibench.c)
-a simple wrapper to benchmark stbi, libpng and qoi
+- [lifconv.c](https://github.com/o-daneel/lif/blob/master/lifconv.c)
+converts between png <> lif
+ <!-- - [qoibench.c](https://github.com/phoboslab/qoi/blob/master/qoibench.c)
+a simple wrapper to benchmark stbi, libpng and qoi -->
 
+## Links
+- [phoboslab/qoi](https://github.com/phoboslab/qoi) - Original QOI Format
 
+<!-- 
 ## MIME Type, File Extension
 
 The recommended MIME type for QOI images is `image/qoi`. While QOI is not yet
@@ -192,4 +195,4 @@ either, as this "reference implementation" tries to be as easy to read as possib
 - [Ubuntu](https://launchpad.net/ubuntu/+source/qoi) - packages for binaries and qoi.h
 - [Fedora](https://packages.fedoraproject.org/pkgs/qoi) - packages for binaries and qoi.h
 
-Packages for other systems [tracked at Repology](https://repology.org/project/qoi/versions).
+Packages for other systems [tracked at Repology](https://repology.org/project/qoi/versions). -->
